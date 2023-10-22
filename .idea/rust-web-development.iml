@@ -5,9 +5,11 @@
       <sourceFolder url="file://$MODULE_DIR$/ch_01/minimal_reqwest/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/ch_01/minimal_tcp/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/ch_01/minimal_warp/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/ch_02/faq-rest-api/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/ch_01/minimal_reqwest/target" />
       <excludeFolder url="file://$MODULE_DIR$/ch_01/minimal_tcp/target" />
       <excludeFolder url="file://$MODULE_DIR$/ch_01/minimal_warp/target" />
+      <excludeFolder url="file://$MODULE_DIR$/ch_02/faq-rest-api/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
