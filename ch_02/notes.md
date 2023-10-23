@@ -116,6 +116,21 @@ fn main() {
 }
 ```
 
+## Understanding results
+
+When a function might fail, we use the `Result` type. It is similar to `Option`, but it can also contain an error. The
+error is usually represented by an `enum` type. The possible of a `Result` are `Ok` and `Err`.
+
+```rust
+pub enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+```
+
+`Option` is used when a value might or might not exist (but not existing should not cause any kind of harm or need to
+manage it) while `Result` is used when a function might fail (and we need to handle the error).
+
 ## Functions onto types
 
 Rust has two ways of implementing functions that are attached to types. They are:
@@ -151,3 +166,13 @@ reference to the value instead of the value itself. References are created using
 
 Traits are the way Rust enable implementation of shared behaviours between types. They can be compared to interfaces,
 abstract classes or mixins in other languages. They are, so, the way to implement polymorphism in Rust.
+
+## Macros
+
+Macros are directives that are applied to the code before compilation. They take the code encapsulated in them and
+generate new Rust code from it.
+
+## Casting
+
+Rust has no implicit casting. If we want to cast a value to another type, we need to do it explicitly. This is mostly
+done with methods (often provided by traits).
