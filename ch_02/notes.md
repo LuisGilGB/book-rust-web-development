@@ -120,7 +120,7 @@ fn main() {
 
 Rust has two ways of implementing functions that are attached to types. They are:
 
-- **Associated functions** (equivalent to other languages static methods, they are called with `::`).
+- **Associated functions** (comparable to other languages' static methods, they are called with `::`).
 - **Methods** (they are called with `.` and take the instance (&self) as the first parameter).
 
 ## String and &str
@@ -146,3 +146,8 @@ will be dropped when the function returns.
 
 If we want to pass a value to a function without moving ownership, we can use *borrowing*. This is done by passing a
 reference to the value instead of the value itself. References are created using the `&` operator.
+
+## Traits
+
+Traits are the way Rust enable implementation of shared behaviours between types. They can be compared to interfaces,
+abstract classes or mixins in other languages. They are, so, the way to implement polymorphism in Rust.
