@@ -1,6 +1,8 @@
 use std::fmt;
 use std::str::FromStr;
 
+use warp::Filter;
+
 #[derive(Debug)]
 struct Question {
     id: QuestionId,
@@ -53,12 +55,19 @@ impl FromStr for QuestionId {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let question = Question::new(
         QuestionId::from_str("1").expect("Unable to parse id"),
         "What is the meaning of life?".to_string(),
         "42".to_string(),
         Some(vec!["life".to_string(), "meaning".to_string()]),
     );
-    println!("Question: {}", question);
+
+    let get_question = warp::get()
+        .map(move || format!("Question: {}", question.title));
+
+    warp::serve(get_question)
+        .run(([127, 0, 0, 1], 3030))
+        .await;
 }

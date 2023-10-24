@@ -176,3 +176,8 @@ generate new Rust code from it.
 
 Rust has no implicit casting. If we want to cast a value to another type, we need to do it explicitly. This is mostly
 done with methods (often provided by traits).
+
+## Feature flags
+
+Feature flags are a way to enable or disable features of a crate. They are defined in the `Cargo.toml` file. This can be
+used to optimize the bundle size by not importing some subcrates or allow some experimental and not stable yet features.
