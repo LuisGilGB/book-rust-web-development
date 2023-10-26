@@ -2,7 +2,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use serde::Serialize;
-use warp::{Filter, http::StatusCode, reject::Reject, Rejection, Reply};
+use warp::{Filter, filters::cors::CorsForbidden, http::Method, http::StatusCode, reject::Reject, Rejection, Reply};
 
 #[derive(Debug, Serialize)]
 struct Question {
@@ -80,24 +80,37 @@ async fn get_questions() -> Result<impl Reply, Rejection> {
 }
 
 async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
-    match r.find() {
-        Some(InvalidId) => {
+    match r.find::<CorsForbidden>() {
+        Some(error) => {
             Ok(warp::reply::with_status(
-                "No valid id provided",
-                StatusCode::UNPROCESSABLE_ENTITY,
+                error.to_string(),
+                StatusCode::FORBIDDEN,
             ))
         }
-        _ => {
-            Ok(warp::reply::with_status(
-                "Route not found",
-                StatusCode::NOT_FOUND,
-            ))
+        None => match r.find() {
+            Some(InvalidId) => {
+                Ok(warp::reply::with_status(
+                    "No valid id provided".to_string(),
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                ))
+            }
+            _ => {
+                Ok(warp::reply::with_status(
+                    "Route not found".to_string(),
+                    StatusCode::NOT_FOUND,
+                ))
+            }
         }
     }
 }
 
 #[tokio::main]
 async fn main() {
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_header("content-type")
+        .allow_methods(&[Method::GET, Method::POST, Method::PATCH, Method::PUT, Method::DELETE]);
+
     let hello_handler = warp::path("health").map(|| format!("Alive"));
 
     let get_items = warp::get()
@@ -107,6 +120,7 @@ async fn main() {
 
     let routes = get_items
         .or(hello_handler)
+        .with(cors)
         .recover(return_error);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;

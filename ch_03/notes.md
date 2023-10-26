@@ -97,3 +97,31 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     }
 }
 ```
+
+## CORS handling
+
+To open our server to other origins (or, directly, to the world), we need to enable **CORS**. This can be done in Warp
+with the `cors` filter.
+
+```rust
+use warp::{Filter, http::Method};
+
+#[tokio::main]
+async fn main() {
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_method(Method::GET);
+
+    let hello = warp::path!("hello" / String)
+        .and(warp::path::end())
+        .and_then(my_route_handler);
+
+    let routes = hello.with(cors);
+
+    warp::serve(routes)
+        .run(([127, 0, 0, 1], 3030))
+        .await;
+}
+```
+
+The CORS Forbidden error can be imported from Warp with `warp::filters::cors::CorsForbidden`.
