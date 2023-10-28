@@ -63,3 +63,24 @@ async fn main() {
     let store_filter = warp::any().map(move || store.clone());
 }
 ```
+
+## Query parameters in Warp
+
+Warp provides a `query` method that can be used to extract query parameters from a request. The `query` method takes a
+key as an argument and returns a `Filter` that can be used to extract the value of the query parameter with that key.
+
+The route handler then must be a function that takes the query parameters structure (usually a `HashMap`) as an
+argument.
+
+```rust
+use warp::Filter;
+
+#[tokio::main]
+async fn main() {
+    let route = warp::path!("hello")
+        .and(warp::query::<HashMap<String, String>>())
+        .map(|query_params: HashMap<String, String>| {
+            format!("Hello, {}!", query_params.get("name").unwrap())
+        });
+}
+```
