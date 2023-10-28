@@ -71,6 +71,22 @@ impl Store {
         }
     }
 
+    fn init() -> Self {
+        Store::new()
+            .add_question(Question::new(
+                QuestionId::from_str("1").expect("No id provided"),
+                "First Question".to_string(),
+                "How did you come up with this idea?".to_string(),
+                Some(vec!("faq".to_string())),
+            ))
+            .add_question(Question::new(
+                QuestionId::from_str("2").expect("No id provided"),
+                "Second Question".to_string(),
+                "Do you regret something?".to_string(),
+                Some(vec!("faq".to_string())),
+            ))
+    }
+
     fn add_question(mut self, question: Question) -> Self {
         self.questions.insert(question.id.clone(), question);
         self
