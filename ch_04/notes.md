@@ -147,7 +147,7 @@ async fn main() {
 }
 ```
 
-## Handling creation and update requests
+## Handling create, update and delete requests
 
 We can use the `warp::post` method to create a route that only matches `POST` requests. We can use
 the `warp::body::json` method to extract the JSON body from the request.
@@ -166,7 +166,8 @@ async fn main() {
 }
 ```
 
-Similar can be done for `PUT` and `PATCH` requests. Following REST good practices, these methods require a parameter in
+Similar can be done for `PUT`, `PATCH` and `DELETE` requests. Following REST good practices, these methods require a
+parameter in
 the path to identify the resource that is being updated. We can use the `warp::path::param` method to extract this
 parameter from the path.
 

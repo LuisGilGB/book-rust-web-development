@@ -5,7 +5,8 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use warp::{Filter, filters::cors::CorsForbidden, http::Method, http::StatusCode, reject::Reject, Rejection, Reply};
+use warp::{Filter, http::Method, http::StatusCode, reject::Reject, Rejection, Reply};
+use warp::filters::{body::BodyDeserializeError, cors::CorsForbidden};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct Question {
@@ -35,6 +36,7 @@ struct InvalidId;
 #[derive(Debug)]
 enum Error {
     CORSForbidden(CorsForbidden),
+    BodyDeserializeError(BodyDeserializeError),
     ParseError(std::num::ParseIntError),
     InvalidId(InvalidId),
     MissingParameters,
@@ -113,6 +115,7 @@ impl fmt::Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::CORSForbidden(error) => write!(formatter, "CORS error: {}", error),
+            Error::BodyDeserializeError(error) => write!(formatter, "Body deserialize error: {}", error),
             Error::ParseError(error) => write!(formatter, "Parse error: {}", error),
             Error::InvalidId(error) => write!(formatter, "Invalid id: {}", error),
             Error::MissingParameters => write!(formatter, "Missing parameters"),
@@ -159,7 +162,7 @@ fn extract_pagination(params: HashMap<String, String>, total_length: usize) -> R
 }
 
 async fn get_questions(params: HashMap<String, String>, store: Store) -> Result<impl Reply, Rejection> {
-    println!("{:?}", params);
+    println!("Params: {:?}", params);
     if !params.is_empty() {
         let pagination = extract_pagination(params, store.questions.read().await.len())?;
         let raw_response: Vec<Question> = store
@@ -183,16 +186,29 @@ async fn get_questions(params: HashMap<String, String>, store: Store) -> Result<
 }
 
 async fn add_question(store: Store, question: Question) -> Result<impl Reply, Rejection> {
+    if store.questions.read().await.contains_key(&question.id) {
+        return Err(warp::reject::custom(Error::QuestionAlreadyExists));
+    }
     store.questions.write().await.insert(question.id.clone(), question.clone());
     Ok(warp::reply::with_status("Question added", StatusCode::CREATED))
 }
 
 async fn update_question(question_id: String, store: Store, question: Question) -> Result<impl Reply, Rejection> {
+    if question_id != question.id.0 {
+        return Err(warp::reject::custom(Error::InvalidId(InvalidId)));
+    }
     match store.questions.write().await.get_mut(&QuestionId(question_id)) {
         Some(q) => {
             *q = question;
-            Ok(warp::reply::with_status("Question updated", StatusCode::OK))
+            Ok(warp::reply::with_status("Question updated", StatusCode::ACCEPTED))
         }
+        None => Err(warp::reject::custom(Error::QuestionNotFound))
+    }
+}
+
+async fn delete_question(question_id: String, store: Store) -> Result<impl Reply, Rejection> {
+    match store.questions.write().await.remove(&QuestionId(question_id)) {
+        Some(_) => Ok(warp::reply::with_status("Question deleted", StatusCode::NO_CONTENT)),
         None => Err(warp::reject::custom(Error::QuestionNotFound))
     }
 }
@@ -203,6 +219,12 @@ async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
             Ok(warp::reply::with_status(
                 error.to_string(),
                 StatusCode::FORBIDDEN,
+            ))
+        }
+        Some(Error::BodyDeserializeError(_error)) => {
+            Ok(warp::reply::with_status(
+                "Body deserialize error".to_string(),
+                StatusCode::UNPROCESSABLE_ENTITY,
             ))
         }
         Some(Error::InvalidId(_error)) => {
@@ -286,9 +308,17 @@ async fn main() {
         .and(warp::body::json())
         .and_then(update_question);
 
+    let delete_question = warp::delete()
+        .and(warp::path("questions"))
+        .and(warp::path::param::<String>())
+        .and(warp::path::end())
+        .and(store_filter.clone())
+        .and_then(delete_question);
+
     let routes = get_questions
         .or(add_question)
         .or(update_question)
+        .or(delete_question)
         .or(health)
         .with(cors)
         .recover(return_error);
