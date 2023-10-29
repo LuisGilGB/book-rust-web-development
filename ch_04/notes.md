@@ -84,3 +84,65 @@ async fn main() {
         });
 }
 ```
+
+## Modifying states: Concurrency challenges
+
+We know that Rust only allows one routine to own a value at a time. This includes function callings, which means that
+when we pass a value as an argument or we use a variable to assign another one, the previous holder of that value ends
+up losing ownership of it and remains as `uninit`.
+
+```rust
+fn main() {
+    let x = 1;
+    let y = x;
+    // x is now uninit (uninitialized)
+}
+```
+
+A consequence of this policy is that **no value can be shared between threads**. We can think in measures to avoid this
+obstacle, but they have important drawbacks:
+
+- Copying the values. <- Pollutes the memory and struggles when mutations are needed.
+- Waiting one task to finish before starting another one.  <- Kills the purpose of concurrency.
+
+Fortunately, Rust provides tools to manage data structures under this difficult scenarios.
+
+### For reading
+
+`Rc` and `Arc`. `Arc` allocates the value on the heap and a pointer to it on the stack, being this pointer the actually
+copied thing.
+
+- `Rc` works only on **single-threaded** systems. It stands for **reference counted**.
+- `Arc` works on **multi-threaded** systems. It stands for **atomically reference counted**.
+
+```rust
+use std::sync::Arc;
+
+fn main() {
+    let x = Arc::new(String::from("Hello"));
+    let y = Arc::clone(&x);
+    // The "Hello" string is encapsulated in a heap-allocated memory direction with a counter.
+    // This counter counts the number of pointers to it (2 in this case).
+    // When the counter reaches 0, `Arc` drops the value and the memory is freed.
+}
+```
+
+### For writing
+
+`Mutex` and `RwLock`.
+
+- `Mutex` stands for **mutual exclusion**. It allows only one thread to access the data at a time.
+- `RwLock` stands for **read-write lock**. It allows multiple threads to read the data at the same time, but only one
+  thread to write it.
+
+Notice that both of them come from the `std::sync` module, which means that they are meant to be used for synchronous
+tasks. Fos asynchronous operations, we have to use the `tokio::sync` module.
+
+```rust
+use std::sync::RwLock;
+
+#[tokio::main]
+async fn main() {
+    let x = RwLock::new(String::from("Hello"));
+}
+```

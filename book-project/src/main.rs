@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
 use warp::{Filter, filters::cors::CorsForbidden, http::Method, http::StatusCode, reject::Reject, Rejection, Reply};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -18,7 +20,7 @@ struct QuestionId(String);
 
 #[derive(Clone)]
 struct Store {
-    questions: HashMap<QuestionId, Question>,
+    questions: Arc<RwLock<HashMap<QuestionId, Question>>>,
 }
 
 #[derive(Debug)]
@@ -83,7 +85,7 @@ impl FromStr for QuestionId {
 impl Store {
     fn new() -> Self {
         Store {
-            questions: HashMap::new(),
+            questions: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -92,13 +94,8 @@ impl Store {
         let parsed_hash_map: HashMap<QuestionId, Question> = serde_json::from_str(file).expect("Can't parse questions.json file");
 
         Store {
-            questions: parsed_hash_map,
+            questions: Arc::new(RwLock::new(parsed_hash_map)),
         }
-    }
-
-    fn add_question(mut self, question: Question) -> Self {
-        self.questions.insert(question.id.clone(), question);
-        self
     }
 }
 
@@ -160,12 +157,23 @@ fn extract_pagination(params: HashMap<String, String>, total_length: usize) -> R
 async fn get_questions(params: HashMap<String, String>, store: Store) -> Result<impl Reply, Rejection> {
     println!("{:?}", params);
     if !params.is_empty() {
-        let pagination = extract_pagination(params, store.questions.len())?;
-        let raw_response: Vec<Question> = store.questions.values().cloned().collect();
+        let pagination = extract_pagination(params, store.questions.read().await.len())?;
+        let raw_response: Vec<Question> = store
+            .questions
+            .read()
+            .await
+            .values()
+            .cloned()
+            .collect();
         let response = raw_response[pagination.start..pagination.end].to_vec();
         Ok(warp::reply::json(&response))
     } else {
-        let response = store.questions.values().cloned().collect::<Vec<Question>>();
+        let response = store.questions
+            .read()
+            .await
+            .values()
+            .cloned()
+            .collect::<Vec<Question>>();
         Ok(warp::reply::json(&response))
     }
 }
@@ -178,7 +186,7 @@ async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
                 StatusCode::FORBIDDEN,
             ))
         }
-        Some(Error::InvalidId(error)) => {
+        Some(Error::InvalidId(_error)) => {
             Ok(warp::reply::with_status(
                 "No valid id provided".to_string(),
                 StatusCode::UNPROCESSABLE_ENTITY,
@@ -196,7 +204,7 @@ async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
                 StatusCode::BAD_REQUEST,
             ))
         }
-        Some(Error::ParseError(error)) => {
+        Some(Error::ParseError(_error)) => {
             Ok(warp::reply::with_status(
                 "Parse error".to_string(),
                 StatusCode::BAD_REQUEST,
