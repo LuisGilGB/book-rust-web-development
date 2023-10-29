@@ -19,9 +19,20 @@ struct Question {
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
 struct QuestionId(String);
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct Answer {
+    id: AnswerId,
+    content: String,
+    question_id: QuestionId,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
+struct AnswerId(String);
+
 #[derive(Clone)]
 struct Store {
     questions: Arc<RwLock<HashMap<QuestionId, Question>>>,
+    answers: Arc<RwLock<HashMap<AnswerId, Answer>>>,
 }
 
 #[derive(Debug)]
@@ -90,6 +101,7 @@ impl Store {
     fn new() -> Self {
         Store {
             questions: Arc::new(RwLock::new(HashMap::new())),
+            answers: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -99,6 +111,7 @@ impl Store {
 
         Store {
             questions: Arc::new(RwLock::new(parsed_hash_map)),
+            answers: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
@@ -213,6 +226,27 @@ async fn delete_question(question_id: String, store: Store) -> Result<impl Reply
     }
 }
 
+async fn add_answer(question_id: String, store: Store, params: HashMap<String, String>) -> Result<impl Reply, Rejection> {
+    let question_id: QuestionId = match question_id.parse() {
+        Ok(id) => match store.questions.read().await.get(&id) {
+            Some(_) => id,
+            None => return Err(warp::reject::custom(Error::QuestionNotFound))
+        }
+        Err(_) => return Err(warp::reject::custom(Error::InvalidId(InvalidId)))
+    };
+    let content = match params.get("content") {
+        Some(c) => c,
+        None => return Err(warp::reject::custom(Error::MissingParameters))
+    };
+    let answer = Answer {
+        id: AnswerId(store.answers.read().await.len().to_string()),
+        content: content.to_string(),
+        question_id,
+    };
+    store.answers.write().await.insert(answer.id.clone(), answer);
+    Ok(warp::reply::with_status("Answer added", StatusCode::CREATED))
+}
+
 async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
     match r.find::<Error>() {
         Some(Error::CORSForbidden(error)) => {
@@ -315,10 +349,20 @@ async fn main() {
         .and(store_filter.clone())
         .and_then(delete_question);
 
+    let add_answer = warp::post()
+        .and(warp::path("questions"))
+        .and(warp::path::param::<String>())
+        .and(warp::path("answers"))
+        .and(warp::path::end())
+        .and(store_filter.clone())
+        .and(warp::body::form())
+        .and_then(add_answer);
+
     let routes = get_questions
         .or(add_question)
         .or(update_question)
         .or(delete_question)
+        .or(add_answer)
         .or(health)
         .with(cors)
         .recover(return_error);

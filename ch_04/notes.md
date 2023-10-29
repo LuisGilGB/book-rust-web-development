@@ -190,3 +190,21 @@ async fn main() {
         });
 }
 ```
+
+## Reading url-form-encoded data
+
+Warp allows the reading of `url-form-encoded` data with the `warp::body::form` method.
+
+```rust
+use warp::Filter;
+
+#[tokio::main]
+async fn main() {
+    let route = warp::path!("store")
+        .and(warp::post())
+        .and(warp::body::form())
+        .map(|item: Item| {
+            // ...
+        });
+}
+```
