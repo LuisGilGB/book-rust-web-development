@@ -146,3 +146,46 @@ async fn main() {
     let x = RwLock::new(String::from("Hello"));
 }
 ```
+
+## Handling creation and update requests
+
+We can use the `warp::post` method to create a route that only matches `POST` requests. We can use
+the `warp::body::json` method to extract the JSON body from the request.
+
+```rust
+use warp::Filter;
+
+#[tokio::main]
+async fn main() {
+    let route = warp::path!("store")
+        .and(warp::post())
+        .and(warp::body::json())
+        .map(|item: Item| {
+            // ...
+        });
+}
+```
+
+Similar can be done for `PUT` and `PATCH` requests. Following REST good practices, these methods require a parameter in
+the path to identify the resource that is being updated. We can use the `warp::path::param` method to extract this
+parameter from the path.
+
+In terms of the `HashMap` type, we can use the `insert` method to insert a new key-value pair into the map. If we just
+want to update the value of an existing key, we obtain a mutable reference with the `get_mut` method and assign the new
+value to it.
+
+```rust
+use warp::Filter;
+
+#[tokio::main]
+async fn main() {
+    let route = warp::path!("store")
+        .and(warp::put())
+        .and(warp::path::param::<u32>())
+        .and(warp::body::json())
+        .and(warp::any().map(move || store.clone()))
+        .map(|id: u32, item: Item, store: HashMap<u32, Item>| {
+            store.get_mut(&item.id).map(|i| *i = item);
+        });
+}
+```

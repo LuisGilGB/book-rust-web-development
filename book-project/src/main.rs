@@ -39,6 +39,8 @@ enum Error {
     InvalidId(InvalidId),
     MissingParameters,
     StartGreaterThanEnd,
+    QuestionNotFound,
+    QuestionAlreadyExists,
 }
 
 impl Question {
@@ -115,6 +117,8 @@ impl fmt::Display for Error {
             Error::InvalidId(error) => write!(formatter, "Invalid id: {}", error),
             Error::MissingParameters => write!(formatter, "Missing parameters"),
             Error::StartGreaterThanEnd => write!(formatter, "Start cannot be greater than end"),
+            Error::QuestionNotFound => write!(formatter, "Question not found"),
+            Error::QuestionAlreadyExists => write!(formatter, "Question already exists"),
         }
     }
 }
@@ -178,6 +182,21 @@ async fn get_questions(params: HashMap<String, String>, store: Store) -> Result<
     }
 }
 
+async fn add_question(store: Store, question: Question) -> Result<impl Reply, Rejection> {
+    store.questions.write().await.insert(question.id.clone(), question.clone());
+    Ok(warp::reply::with_status("Question added", StatusCode::CREATED))
+}
+
+async fn update_question(question_id: String, store: Store, question: Question) -> Result<impl Reply, Rejection> {
+    match store.questions.write().await.get_mut(&QuestionId(question_id)) {
+        Some(q) => {
+            *q = question;
+            Ok(warp::reply::with_status("Question updated", StatusCode::OK))
+        }
+        None => Err(warp::reject::custom(Error::QuestionNotFound))
+    }
+}
+
 async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
     match r.find::<Error>() {
         Some(Error::CORSForbidden(error)) => {
@@ -210,7 +229,21 @@ async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
                 StatusCode::BAD_REQUEST,
             ))
         }
-        _ => {
+        Some(Error::QuestionNotFound) => {
+            Ok(warp::reply::with_status(
+                "Question not found".to_string(),
+                StatusCode::NOT_FOUND,
+            ))
+        }
+        Some(Error::QuestionAlreadyExists) => {
+            Ok(warp::reply::with_status(
+                "Question already exists".to_string(),
+                StatusCode::CONFLICT,
+            ))
+        }
+        err => {
+            println!("Unhandled rejection: {:?}", r);
+            println!("Unhandled error: {:?}", err);
             Ok(warp::reply::with_status(
                 "Route not found".to_string(),
                 StatusCode::NOT_FOUND,
@@ -229,17 +262,34 @@ async fn main() {
         .allow_header("content-type")
         .allow_methods(&[Method::GET, Method::POST, Method::PATCH, Method::PUT, Method::DELETE]);
 
-    let hello_handler = warp::path("health").map(|| format!("Alive"));
+    let health = warp::path("health").map(|| format!("Alive"));
 
-    let get_items = warp::get()
+    let get_questions = warp::get()
         .and(warp::path("questions"))
         .and(warp::path::end())
         .and(warp::query())
-        .and(store_filter)
+        .and(store_filter.clone())
         .and_then(get_questions);
 
-    let routes = get_items
-        .or(hello_handler)
+    let add_question = warp::post()
+        .and(warp::path("questions"))
+        .and(warp::path::end())
+        .and(store_filter.clone())
+        .and(warp::body::json())
+        .and_then(add_question);
+
+    let update_question = warp::put()
+        .and(warp::path("questions"))
+        .and(warp::path::param::<String>())
+        .and(warp::path::end())
+        .and(store_filter.clone())
+        .and(warp::body::json())
+        .and_then(update_question);
+
+    let routes = get_questions
+        .or(add_question)
+        .or(update_question)
+        .or(health)
         .with(cors)
         .recover(return_error);
 
