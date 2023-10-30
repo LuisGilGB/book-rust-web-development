@@ -5,8 +5,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use warp::{Filter, http::Method, http::StatusCode, reject::Reject, Rejection, Reply};
-use warp::filters::{body::BodyDeserializeError, cors::CorsForbidden};
+use warp::{Filter, http::Method, http::StatusCode, Rejection, Reply};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct Question {
@@ -41,19 +40,115 @@ struct Pagination {
     end: usize,
 }
 
-#[derive(Debug)]
-struct InvalidId;
+mod error {
+    use std::fmt;
 
-#[derive(Debug)]
-enum Error {
-    CORSForbidden(CorsForbidden),
-    BodyDeserializeError(BodyDeserializeError),
-    ParseError(std::num::ParseIntError),
-    InvalidId(InvalidId),
-    MissingParameters,
-    StartGreaterThanEnd,
-    QuestionNotFound,
-    QuestionAlreadyExists,
+    use warp::{Rejection, Reply};
+    use warp::body::BodyDeserializeError;
+    use warp::cors::CorsForbidden;
+    use warp::http::StatusCode;
+    use warp::reject::Reject;
+
+    #[derive(Debug)]
+    pub struct InvalidId;
+
+    #[derive(Debug)]
+    pub enum Error {
+        CORSForbidden(CorsForbidden),
+        BodyDeserializeError(BodyDeserializeError),
+        ParseError(std::num::ParseIntError),
+        InvalidId(InvalidId),
+        MissingParameters,
+        StartGreaterThanEnd,
+        QuestionNotFound,
+        QuestionAlreadyExists,
+    }
+
+    impl fmt::Display for InvalidId {
+        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            write!(formatter, "Invalid id")
+        }
+    }
+
+    impl Reject for InvalidId {}
+
+    impl fmt::Display for Error {
+        fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Error::CORSForbidden(error) => write!(formatter, "CORS error: {}", error),
+                Error::BodyDeserializeError(error) => write!(formatter, "Body deserialize error: {}", error),
+                Error::ParseError(error) => write!(formatter, "Parse error: {}", error),
+                Error::InvalidId(error) => write!(formatter, "Invalid id: {}", error),
+                Error::MissingParameters => write!(formatter, "Missing parameters"),
+                Error::StartGreaterThanEnd => write!(formatter, "Start cannot be greater than end"),
+                Error::QuestionNotFound => write!(formatter, "Question not found"),
+                Error::QuestionAlreadyExists => write!(formatter, "Question already exists"),
+            }
+        }
+    }
+
+    impl Reject for Error {}
+
+    pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
+        match r.find::<Error>() {
+            Some(Error::CORSForbidden(error)) => {
+                Ok(warp::reply::with_status(
+                    error.to_string(),
+                    StatusCode::FORBIDDEN,
+                ))
+            }
+            Some(Error::BodyDeserializeError(_error)) => {
+                Ok(warp::reply::with_status(
+                    "Body deserialize error".to_string(),
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                ))
+            }
+            Some(Error::InvalidId(_error)) => {
+                Ok(warp::reply::with_status(
+                    "No valid id provided".to_string(),
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                ))
+            }
+            Some(Error::MissingParameters) => {
+                Ok(warp::reply::with_status(
+                    "Missing parameters".to_string(),
+                    StatusCode::BAD_REQUEST,
+                ))
+            }
+            Some(Error::StartGreaterThanEnd) => {
+                Ok(warp::reply::with_status(
+                    "Start cannot be greater than end".to_string(),
+                    StatusCode::BAD_REQUEST,
+                ))
+            }
+            Some(Error::ParseError(_error)) => {
+                Ok(warp::reply::with_status(
+                    "Parse error".to_string(),
+                    StatusCode::BAD_REQUEST,
+                ))
+            }
+            Some(Error::QuestionNotFound) => {
+                Ok(warp::reply::with_status(
+                    "Question not found".to_string(),
+                    StatusCode::NOT_FOUND,
+                ))
+            }
+            Some(Error::QuestionAlreadyExists) => {
+                Ok(warp::reply::with_status(
+                    "Question already exists".to_string(),
+                    StatusCode::CONFLICT,
+                ))
+            }
+            err => {
+                println!("Unhandled rejection: {:?}", r);
+                println!("Unhandled error: {:?}", err);
+                Ok(warp::reply::with_status(
+                    "Route not found".to_string(),
+                    StatusCode::NOT_FOUND,
+                ))
+            }
+        }
+    }
 }
 
 impl Question {
@@ -116,31 +211,6 @@ impl Store {
     }
 }
 
-impl fmt::Display for InvalidId {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "Invalid id")
-    }
-}
-
-impl Reject for InvalidId {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::CORSForbidden(error) => write!(formatter, "CORS error: {}", error),
-            Error::BodyDeserializeError(error) => write!(formatter, "Body deserialize error: {}", error),
-            Error::ParseError(error) => write!(formatter, "Parse error: {}", error),
-            Error::InvalidId(error) => write!(formatter, "Invalid id: {}", error),
-            Error::MissingParameters => write!(formatter, "Missing parameters"),
-            Error::StartGreaterThanEnd => write!(formatter, "Start cannot be greater than end"),
-            Error::QuestionNotFound => write!(formatter, "Question not found"),
-            Error::QuestionAlreadyExists => write!(formatter, "Question already exists"),
-        }
-    }
-}
-
-impl Reject for Error {}
-
 fn cap_number(max: usize) -> impl Fn(usize) -> usize {
     move |x| {
         if x > max {
@@ -151,27 +221,27 @@ fn cap_number(max: usize) -> impl Fn(usize) -> usize {
     }
 }
 
-fn extract_pagination(params: HashMap<String, String>, total_length: usize) -> Result<Pagination, Error> {
+fn extract_pagination(params: HashMap<String, String>, total_length: usize) -> Result<Pagination, error::Error> {
     if params.contains_key("start") && params.contains_key("end") {
         let start = params
             .get("start")
             .unwrap()
             .parse::<usize>()
-            .map_err(Error::ParseError)?;
+            .map_err(error::Error::ParseError)?;
         let end = params
             .get("end")
             .unwrap()
             .parse::<usize>()
-            .map_err(Error::ParseError)?;
+            .map_err(error::Error::ParseError)?;
         if start > end {
-            return Err(Error::StartGreaterThanEnd);
+            return Err(error::Error::StartGreaterThanEnd);
         }
         return Ok(Pagination {
             start: cap_number(total_length)(start),
             end: cap_number(total_length)(end),
         });
     }
-    Err(Error::MissingParameters)
+    Err(error::Error::MissingParameters)
 }
 
 async fn get_questions(params: HashMap<String, String>, store: Store) -> Result<impl Reply, Rejection> {
@@ -200,7 +270,7 @@ async fn get_questions(params: HashMap<String, String>, store: Store) -> Result<
 
 async fn add_question(store: Store, question: Question) -> Result<impl Reply, Rejection> {
     if store.questions.read().await.contains_key(&question.id) {
-        return Err(warp::reject::custom(Error::QuestionAlreadyExists));
+        return Err(warp::reject::custom(error::Error::QuestionAlreadyExists));
     }
     store.questions.write().await.insert(question.id.clone(), question.clone());
     Ok(warp::reply::with_status("Question added", StatusCode::CREATED))
@@ -208,21 +278,21 @@ async fn add_question(store: Store, question: Question) -> Result<impl Reply, Re
 
 async fn update_question(question_id: String, store: Store, question: Question) -> Result<impl Reply, Rejection> {
     if question_id != question.id.0 {
-        return Err(warp::reject::custom(Error::InvalidId(InvalidId)));
+        return Err(warp::reject::custom(error::Error::InvalidId(error::InvalidId)));
     }
     match store.questions.write().await.get_mut(&QuestionId(question_id)) {
         Some(q) => {
             *q = question;
             Ok(warp::reply::with_status("Question updated", StatusCode::ACCEPTED))
         }
-        None => Err(warp::reject::custom(Error::QuestionNotFound))
+        None => Err(warp::reject::custom(error::Error::QuestionNotFound))
     }
 }
 
 async fn delete_question(question_id: String, store: Store) -> Result<impl Reply, Rejection> {
     match store.questions.write().await.remove(&QuestionId(question_id)) {
         Some(_) => Ok(warp::reply::with_status("Question deleted", StatusCode::NO_CONTENT)),
-        None => Err(warp::reject::custom(Error::QuestionNotFound))
+        None => Err(warp::reject::custom(error::Error::QuestionNotFound))
     }
 }
 
@@ -230,13 +300,13 @@ async fn add_answer(question_id: String, store: Store, params: HashMap<String, S
     let question_id: QuestionId = match question_id.parse() {
         Ok(id) => match store.questions.read().await.get(&id) {
             Some(_) => id,
-            None => return Err(warp::reject::custom(Error::QuestionNotFound))
+            None => return Err(warp::reject::custom(error::Error::QuestionNotFound))
         }
-        Err(_) => return Err(warp::reject::custom(Error::InvalidId(InvalidId)))
+        Err(_) => return Err(warp::reject::custom(error::Error::InvalidId(error::InvalidId)))
     };
     let content = match params.get("content") {
         Some(c) => c,
-        None => return Err(warp::reject::custom(Error::MissingParameters))
+        None => return Err(warp::reject::custom(error::Error::MissingParameters))
     };
     let answer = Answer {
         id: AnswerId(store.answers.read().await.len().to_string()),
@@ -245,67 +315,6 @@ async fn add_answer(question_id: String, store: Store, params: HashMap<String, S
     };
     store.answers.write().await.insert(answer.id.clone(), answer);
     Ok(warp::reply::with_status("Answer added", StatusCode::CREATED))
-}
-
-async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
-    match r.find::<Error>() {
-        Some(Error::CORSForbidden(error)) => {
-            Ok(warp::reply::with_status(
-                error.to_string(),
-                StatusCode::FORBIDDEN,
-            ))
-        }
-        Some(Error::BodyDeserializeError(_error)) => {
-            Ok(warp::reply::with_status(
-                "Body deserialize error".to_string(),
-                StatusCode::UNPROCESSABLE_ENTITY,
-            ))
-        }
-        Some(Error::InvalidId(_error)) => {
-            Ok(warp::reply::with_status(
-                "No valid id provided".to_string(),
-                StatusCode::UNPROCESSABLE_ENTITY,
-            ))
-        }
-        Some(Error::MissingParameters) => {
-            Ok(warp::reply::with_status(
-                "Missing parameters".to_string(),
-                StatusCode::BAD_REQUEST,
-            ))
-        }
-        Some(Error::StartGreaterThanEnd) => {
-            Ok(warp::reply::with_status(
-                "Start cannot be greater than end".to_string(),
-                StatusCode::BAD_REQUEST,
-            ))
-        }
-        Some(Error::ParseError(_error)) => {
-            Ok(warp::reply::with_status(
-                "Parse error".to_string(),
-                StatusCode::BAD_REQUEST,
-            ))
-        }
-        Some(Error::QuestionNotFound) => {
-            Ok(warp::reply::with_status(
-                "Question not found".to_string(),
-                StatusCode::NOT_FOUND,
-            ))
-        }
-        Some(Error::QuestionAlreadyExists) => {
-            Ok(warp::reply::with_status(
-                "Question already exists".to_string(),
-                StatusCode::CONFLICT,
-            ))
-        }
-        err => {
-            println!("Unhandled rejection: {:?}", r);
-            println!("Unhandled error: {:?}", err);
-            Ok(warp::reply::with_status(
-                "Route not found".to_string(),
-                StatusCode::NOT_FOUND,
-            ))
-        }
-    }
 }
 
 #[tokio::main]
@@ -365,7 +374,7 @@ async fn main() {
         .or(add_answer)
         .or(health)
         .with(cors)
-        .recover(return_error);
+        .recover(error::return_error);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
