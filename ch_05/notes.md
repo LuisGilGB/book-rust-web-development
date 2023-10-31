@@ -36,3 +36,33 @@ mod my_module {
 
 use my_module::my_function;
 ```
+
+### Modules from another file
+
+To expose a module from a file, we can wrap the code inside a `pub mod` block. `mod` contains the scope of the
+module and `pub` makes it public.
+
+```rust
+// src/my_module.rs
+pub mod my_module {
+    pub fn my_function() {
+        // ...
+    }
+}
+```
+
+This wrapping is not required if the module is defined in a file with the same name as the module. In that case, the
+module is automatically exposed. Otherwise, consumers of the module code would have to call it with the module name
+prepended:
+
+```rust
+// src/main.rs
+use my_module::my_module::my_function;
+```
+
+To allow a client file of that module to consume it, the module must be referenced with the `mod` keyword:
+
+```rust
+// src/main.rs
+mod my_module;
+```
