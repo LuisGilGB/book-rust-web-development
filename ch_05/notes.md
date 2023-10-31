@@ -60,9 +60,26 @@ prepended:
 use my_module::my_module::my_function;
 ```
 
-To allow a client file of that module to consume it, the module must be referenced with the `mod` keyword:
+To allow a client file of that module to consume it, the module must be referenced with the `mod` keyword. The `use`
+keyword can be then specified to import specific elements from the module.
 
 ```rust
 // src/main.rs
 mod my_module;
+```
+
+When organizing files in folders, a `mod.rs` file is a way to define an entrypoint for all the modules in that folder.
+The use of `pub mod` is required in this case.
+
+```rust
+// src/my_module/mod.rs
+pub mod my_module;
+```
+
+Between modules that are not the main file or the entrypoint of the crate, elements can be imported with the `use`
+keyword and the `crate` keyword following the module location and name:
+
+```rust
+// src/another_module/another_module.rs
+use crate::my_module::my_function;
 ```
