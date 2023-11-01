@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use errors::return_error;
 use serde::{Deserialize, Serialize};
 use warp::{Filter, http::Method, Reply};
 
@@ -8,7 +9,6 @@ use infrastructure::store::Store;
 use crate::infrastructure::router::answer::add_answer;
 use crate::infrastructure::router::question::{add_question, delete_question, get_questions, update_question};
 
-mod error;
 mod domain;
 mod infrastructure;
 
@@ -69,7 +69,7 @@ async fn main() {
         .or(add_answer)
         .or(health)
         .with(cors)
-        .recover(error::return_error);
+        .recover(return_error);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }

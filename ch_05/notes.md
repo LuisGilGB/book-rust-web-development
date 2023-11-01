@@ -83,3 +83,34 @@ keyword and the `crate` keyword following the module location and name:
 // src/another_module/another_module.rs
 use crate::my_module::my_function;
 ```
+
+This only works for modules available in the main file of the crate.
+
+## Library crates in the workspace
+
+Cargo allows you to define a workspace with multiple crates. This is useful when you have a library that is used by
+multiple applications, for instance. To create a workspace, create a `Cargo.toml` file in the root folder of the
+workspace and add the following lines:
+
+```toml
+[workspace]
+members = [
+    "my_lib",
+    "my_app"
+]
+```
+
+To create a library crate, use the `cargo new` command with the `--lib` flag. To create an application crate, use the
+`--bin` flag:
+
+```bash
+cargo new my_lib --lib
+cargo new my_app --bin
+```
+
+To use a library crate in an application crate, add the following line to the `Cargo.toml` file of the application:
+
+```toml
+[dependencies]
+my_lib = { path = "../my_lib" }
+```

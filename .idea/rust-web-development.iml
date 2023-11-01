@@ -8,7 +8,8 @@
       <sourceFolder url="file://$MODULE_DIR$/ch_02/faq-rest-api/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/ch_02/book-with-option-poc/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/ch_03/qa-web-app/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/book-project/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/book-project/errors/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/book-project/qa_web_app/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/ch_01/minimal_reqwest/target" />
       <excludeFolder url="file://$MODULE_DIR$/ch_01/minimal_tcp/target" />
       <excludeFolder url="file://$MODULE_DIR$/ch_01/minimal_warp/target" />
@@ -16,6 +17,7 @@
       <excludeFolder url="file://$MODULE_DIR$/ch_02/book-with-option-poc/target" />
       <excludeFolder url="file://$MODULE_DIR$/ch_03/qa-web-app/target" />
       <excludeFolder url="file://$MODULE_DIR$/book-project/target" />
+      <excludeFolder url="file://$MODULE_DIR$/book-project/qa_web_app/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
