@@ -114,3 +114,25 @@ To use a library crate in an application crate, add the following line to the `C
 [dependencies]
 my_lib = { path = "../my_lib" }
 ```
+
+## Creating documentation
+
+Rust provides tools to create documentation from your code. A template version of the documentation is generated from
+the code itself, but more information can be added with comments. The documentation is generated with the `cargo doc`
+command.
+
+The comments that are included in the documentation use the following syntax:
+
+```rust
+/// This is a line comment that is included in the documentation
+/** This is a block comment that is included in the documentation */
+//! This is a line comment that is included in the documentation applied to the previous block
+/*! This is a block comment that is included in the documentation applied to the previous block */
+```
+
+Comments that are not included in the documentation use the following syntax:
+
+```rust
+// This is a line comment that is not included in the documentation
+/* This is a block comment that is not included in the documentation */
+```
