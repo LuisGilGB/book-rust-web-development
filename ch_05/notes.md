@@ -136,3 +136,25 @@ Comments that are not included in the documentation use the following syntax:
 // This is a line comment that is not included in the documentation
 /* This is a block comment that is not included in the documentation */
 ```
+
+### Code in documentation
+
+Code can be included in the documentation as code snippets for Markdown. To do so, use the following syntax:
+
+```rust
+/// ```rust
+/// let x = 5;
+/// ```
+```
+
+Test assertions can be included in the documentation as well. This grants your documentation to be properly up to date:
+
+```rust
+/// ```rust
+/// let x = 5;
+/// let y = 6;
+/// assert_eq!(x + y, 11);
+/// ```
+```
+
+These snippets will be displayed in the documentation as code blocks with the Rust syntax highlighting.
