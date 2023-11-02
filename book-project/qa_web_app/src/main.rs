@@ -1,9 +1,8 @@
-use std::str::FromStr;
+#![warn(clippy::all)]
+
+use warp::{Filter, http::Method};
 
 use errors::return_error;
-use serde::{Deserialize, Serialize};
-use warp::{Filter, http::Method, Reply};
-
 use infrastructure::store::Store;
 
 use crate::infrastructure::router::answer::add_answer;
@@ -22,7 +21,7 @@ async fn main() {
         .allow_header("content-type")
         .allow_methods(&[Method::GET, Method::POST, Method::PATCH, Method::PUT, Method::DELETE]);
 
-    let health = warp::path("health").map(|| format!("Alive"));
+    let health = warp::path("health").map(|| "Alive".to_string());
 
     let get_questions = warp::get()
         .and(warp::path("questions"))

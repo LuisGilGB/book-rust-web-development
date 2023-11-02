@@ -54,3 +54,33 @@ impl FromStr for QuestionId {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_question_id_from_str() {
+        let id = "1234";
+        let question_id = QuestionId::from_str(id).unwrap();
+        assert_eq!(question_id, QuestionId(id.to_string()));
+    }
+
+    #[test]
+    fn test_question_id_from_str_empty() {
+        let id = "";
+        let question_id = QuestionId::from_str(id);
+        assert!(question_id.is_err());
+    }
+
+    #[test]
+    fn test_question_display() {
+        let id = "1234";
+        let title = "title".to_string();
+        let content = "content".to_string();
+        let tags = Some(vec!["tag1".to_string(), "tag2".to_string()]);
+        let question = Question::new(QuestionId(id.to_string()), title.clone(), content.clone(), tags.clone());
+        let question_str = format!("Question: {}, {}, {}, {:?}", id, title, content, tags);
+        assert_eq!(question.to_string(), question_str);
+    }
+}

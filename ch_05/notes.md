@@ -158,3 +158,28 @@ Test assertions can be included in the documentation as well. This grants your d
 ```
 
 These snippets will be displayed in the documentation as code blocks with the Rust syntax highlighting.
+
+## Linting and formatting
+
+Rust provides tools to lint and format your code. The linter is called `clippy` and the formatter is called `rustfmt`.
+
+To install them, run the following commands:
+
+```bash
+rustup component add clippy
+rustup component add rustfmt
+```
+
+To run them, run the following commands:
+
+```bash
+cargo clippy
+cargo fmt
+```
+
+To use custom rules for `clippy`, create a `.clippy.toml` file in the root folder of your crate. Rules can also be added
+to the top of the `main.rs` (or `lib.rs`) file with the `#![warn(clippy::rule_name)]` syntax.
+
+```rust
+#![warn(clippy::all)]
+```
