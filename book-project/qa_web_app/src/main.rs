@@ -1,12 +1,14 @@
 #![warn(clippy::all)]
 
-use warp::{Filter, http::Method};
+use warp::{http::Method, Filter};
 
 use errors::return_error;
 use infrastructure::store::Store;
 
 use crate::infrastructure::router::answer::add_answer;
-use crate::infrastructure::router::question::{add_question, delete_question, get_questions, update_question};
+use crate::infrastructure::router::question::{
+    add_question, delete_question, get_questions, update_question,
+};
 
 mod domain;
 mod infrastructure;
@@ -19,7 +21,13 @@ async fn main() {
     let cors = warp::cors()
         .allow_any_origin()
         .allow_header("content-type")
-        .allow_methods(&[Method::GET, Method::POST, Method::PATCH, Method::PUT, Method::DELETE]);
+        .allow_methods(&[
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::PUT,
+            Method::DELETE,
+        ]);
 
     let health = warp::path("health").map(|| "Alive".to_string());
 

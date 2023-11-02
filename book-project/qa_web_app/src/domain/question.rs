@@ -79,7 +79,12 @@ mod tests {
         let title = "title".to_string();
         let content = "content".to_string();
         let tags = Some(vec!["tag1".to_string(), "tag2".to_string()]);
-        let question = Question::new(QuestionId(id.to_string()), title.clone(), content.clone(), tags.clone());
+        let question = Question::new(
+            QuestionId(id.to_string()),
+            title.clone(),
+            content.clone(),
+            tags.clone(),
+        );
         let question_str = format!("Question: {}, {}, {}, {:?}", id, title, content, tags);
         assert_eq!(question.to_string(), question_str);
     }

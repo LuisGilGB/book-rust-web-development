@@ -35,7 +35,10 @@ fn cap_number(max: usize) -> impl Fn(usize) -> usize {
 /// assert_eq!(pagination.start, 0);
 /// assert_eq!(pagination.end, 10);
 /// ```
-pub fn extract_pagination(params: HashMap<String, String>, total_length: usize) -> Result<Pagination, Error> {
+pub fn extract_pagination(
+    params: HashMap<String, String>,
+    total_length: usize,
+) -> Result<Pagination, Error> {
     if params.contains_key("start") && params.contains_key("end") {
         let start = params
             .get("start")

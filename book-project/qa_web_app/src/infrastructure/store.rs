@@ -22,7 +22,8 @@ impl Store {
 
     pub fn init() -> Self {
         let file = include_str!("../../questions.json");
-        let parsed_hash_map: HashMap<QuestionId, Question> = serde_json::from_str(file).expect("Can't parse questions.json file");
+        let parsed_hash_map: HashMap<QuestionId, Question> =
+            serde_json::from_str(file).expect("Can't parse questions.json file");
 
         Store {
             questions: Arc::new(RwLock::new(parsed_hash_map)),

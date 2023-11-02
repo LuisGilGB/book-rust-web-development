@@ -183,3 +183,5 @@ to the top of the `main.rs` (or `lib.rs`) file with the `#![warn(clippy::rule_na
 ```rust
 #![warn(clippy::all)]
 ```
+
+To use custom rules for `rustfmt`, create a `.rustfmt.toml` file in the root folder of your crate.
