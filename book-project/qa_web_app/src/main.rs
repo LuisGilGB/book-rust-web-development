@@ -1,6 +1,6 @@
 #![warn(clippy::all)]
 
-use warp::{http::Method, Filter};
+use warp::{Filter, http::Method};
 
 use errors::return_error;
 use infrastructure::store::Store;
@@ -15,6 +15,10 @@ mod infrastructure;
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
+    log::info!("Starting server...");
+
     let store = Store::init();
     let store_filter = warp::any().map(move || store.clone());
 
