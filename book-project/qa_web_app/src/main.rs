@@ -33,6 +33,8 @@ async fn main() {
     let store = Store::init();
     let store_filter = warp::any().map(move || store.clone());
 
+    let id_filter = warp::any().map(|| uuid::Uuid::new_v4().to_string());
+
     let cors = warp::cors()
         .allow_any_origin()
         .allow_header("content-type")
@@ -51,6 +53,7 @@ async fn main() {
         .and(warp::path::end())
         .and(warp::query())
         .and(store_filter.clone())
+        .and(id_filter.clone())
         .and_then(get_questions);
 
     let add_question = warp::post()
@@ -58,6 +61,7 @@ async fn main() {
         .and(warp::path::end())
         .and(store_filter.clone())
         .and(warp::body::json())
+        .and(id_filter.clone())
         .and_then(add_question);
 
     let update_question = warp::put()
@@ -66,6 +70,7 @@ async fn main() {
         .and(warp::path::end())
         .and(store_filter.clone())
         .and(warp::body::json())
+        .and(id_filter.clone())
         .and_then(update_question);
 
     let delete_question = warp::delete()
@@ -73,6 +78,7 @@ async fn main() {
         .and(warp::path::param::<String>())
         .and(warp::path::end())
         .and(store_filter.clone())
+        .and(id_filter.clone())
         .and_then(delete_question);
 
     let add_answer = warp::post()
@@ -82,6 +88,7 @@ async fn main() {
         .and(warp::path::end())
         .and(store_filter.clone())
         .and(warp::body::form())
+        .and(id_filter.clone())
         .and_then(add_answer);
 
     let routes = get_questions

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use errors::{Error, InvalidId};
-use warp::http::StatusCode;
 use warp::{Rejection, Reply};
+use warp::http::StatusCode;
+
+use errors::{Error, InvalidId};
 
 use crate::domain::question::{Question, QuestionId};
 use crate::infrastructure::pagination::extract_pagination;
@@ -11,14 +12,17 @@ use crate::infrastructure::store::Store;
 pub async fn get_questions(
     params: HashMap<String, String>,
     store: Store,
+    id: String,
 ) -> Result<impl Reply, Rejection> {
-    println!("Params: {:?}", params);
+    log::info!("{} - Querying questions...", &id);
     if !params.is_empty() {
         let pagination = extract_pagination(params, store.questions.read().await.len())?;
+        log::info!("{} - Pagination set: {:?}", &id, &pagination);
         let raw_response: Vec<Question> = store.questions.read().await.values().cloned().collect();
         let response = raw_response[pagination.start..pagination.end].to_vec();
         Ok(warp::reply::json(&response))
     } else {
+        log::info!("{} - No pagination used", &id);
         let response = store
             .questions
             .read()
@@ -30,8 +34,14 @@ pub async fn get_questions(
     }
 }
 
-pub async fn add_question(store: Store, question: Question) -> Result<impl Reply, Rejection> {
+pub async fn add_question(
+    store: Store,
+    question: Question,
+    id: String,
+) -> Result<impl Reply, Rejection> {
+    log::info!("{} - Adding question...", &id);
     if store.questions.read().await.contains_key(&question.id) {
+        log::warn!("{} - Question already exists", &id);
         return Err(warp::reject::custom(Error::QuestionAlreadyExists));
     }
     store
@@ -49,8 +59,11 @@ pub async fn update_question(
     question_id: String,
     store: Store,
     question: Question,
+    id: String,
 ) -> Result<impl Reply, Rejection> {
+    log::info!("{} - Updating question...", &id);
     if question_id != question.id.0 {
+        log::warn!("{} - Invalid question id", &id);
         return Err(warp::reject::custom(Error::InvalidId(InvalidId)));
     }
     match store
@@ -66,11 +79,19 @@ pub async fn update_question(
                 StatusCode::ACCEPTED,
             ))
         }
-        None => Err(warp::reject::custom(Error::QuestionNotFound)),
+        None => {
+            log::warn!("{} - Question not found", &id);
+            Err(warp::reject::custom(Error::QuestionNotFound))
+        }
     }
 }
 
-pub async fn delete_question(question_id: String, store: Store) -> Result<impl Reply, Rejection> {
+pub async fn delete_question(
+    question_id: String,
+    store: Store,
+    id: String,
+) -> Result<impl Reply, Rejection> {
+    log::info!("{} - Deleting question...", &id);
     match store
         .questions
         .write()
@@ -81,6 +102,9 @@ pub async fn delete_question(question_id: String, store: Store) -> Result<impl R
             "Question deleted",
             StatusCode::NO_CONTENT,
         )),
-        None => Err(warp::reject::custom(Error::QuestionNotFound)),
+        None => {
+            log::warn!("{} - Question not found", &id);
+            Err(warp::reject::custom(Error::QuestionNotFound))
+        }
     }
 }
