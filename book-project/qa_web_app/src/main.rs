@@ -19,6 +19,17 @@ async fn main() {
 
     log::info!("Starting server...");
 
+    let log = warp::log::custom(|info| {
+        log::info!("{} {} {} - {:?} from {} with {:?}",
+            info.method(),
+            info.path(),
+            info.status(),
+            info.elapsed(),
+            info.remote_addr().unwrap(),
+            info.request_headers()
+        )
+    });
+
     let store = Store::init();
     let store_filter = warp::any().map(move || store.clone());
 
@@ -80,6 +91,7 @@ async fn main() {
         .or(add_answer)
         .or(health)
         .with(cors)
+        .with(log)
         .recover(return_error);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;

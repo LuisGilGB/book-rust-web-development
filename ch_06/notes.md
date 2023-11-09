@@ -50,3 +50,36 @@ fn main() {
     error!("This is an error message");
 }
 ```
+
+## Logging route handlers with `warp`
+
+`warp` provides a filter that can be used to print the same logs for all the routes it is applied. This filter can be
+applied to the routes handler then with the `with` method.
+
+```rust
+async fn main() {
+    log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+
+    log::info!("Starting server...");
+
+    let log = warp::log::custom(|info| {
+        log::info!("{} {} {} - {:?} from {} with {:?}",
+            info.method(),
+            info.path(),
+            info.status(),
+            info.elapsed(),
+            info.remote_addr().unwrap(),
+            info.request_headers()
+        )
+    });
+
+    //...
+
+    let routes = route_handler
+        // ... whatever is added
+        .with(log)
+        .recover(return_error);
+
+    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+}
+```
