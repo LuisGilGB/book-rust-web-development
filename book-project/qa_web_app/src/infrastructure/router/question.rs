@@ -56,7 +56,7 @@ pub async fn add_question(
 }
 
 pub async fn update_question(
-    question_id: String,
+    question_id: i32,
     store: Store,
     question: Question,
     id: String,
@@ -87,7 +87,7 @@ pub async fn update_question(
 }
 
 pub async fn delete_question(
-    question_id: String,
+    question_id: i32,
     store: Store,
     id: String,
 ) -> Result<impl Reply, Rejection> {

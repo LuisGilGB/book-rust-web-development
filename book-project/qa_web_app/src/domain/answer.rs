@@ -10,4 +10,4 @@ pub struct Answer {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
-pub struct AnswerId(pub String);
+pub struct AnswerId(pub i32);

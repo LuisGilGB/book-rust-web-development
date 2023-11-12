@@ -12,7 +12,7 @@ pub struct Question {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
-pub struct QuestionId(pub String);
+pub struct QuestionId(pub i32);
 
 impl Question {
     fn new(id: QuestionId, title: String, content: String, tags: Option<Vec<String>>) -> Self {
@@ -41,46 +41,25 @@ impl fmt::Display for QuestionId {
     }
 }
 
-impl FromStr for QuestionId {
-    type Err = std::io::Error;
-
-    fn from_str(id: &str) -> Result<Self, Self::Err> {
-        match id.is_empty() {
-            false => Ok(QuestionId(id.to_string())),
-            true => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "No id provided",
-            )),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_question_id_from_str() {
-        let id = "1234";
+        let id = 1234;
         let question_id = QuestionId::from_str(id).unwrap();
-        assert_eq!(question_id, QuestionId(id.to_string()));
-    }
-
-    #[test]
-    fn test_question_id_from_str_empty() {
-        let id = "";
-        let question_id = QuestionId::from_str(id);
-        assert!(question_id.is_err());
+        assert_eq!(question_id, QuestionId(id));
     }
 
     #[test]
     fn test_question_display() {
-        let id = "1234";
+        let id = 1234;
         let title = "title".to_string();
         let content = "content".to_string();
         let tags = Some(vec!["tag1".to_string(), "tag2".to_string()]);
         let question = Question::new(
-            QuestionId(id.to_string()),
+            QuestionId(id),
             title.clone(),
             content.clone(),
             tags.clone(),
