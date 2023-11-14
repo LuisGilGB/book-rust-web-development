@@ -1,33 +1,22 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 
-use tokio::sync::RwLock;
-
-use crate::domain::answer::{Answer, AnswerId};
-use crate::domain::question::{Question, QuestionId};
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Store {
-    pub questions: Arc<RwLock<HashMap<QuestionId, Question>>>,
-    pub answers: Arc<RwLock<HashMap<AnswerId, Answer>>>,
+    pub connection: PgPool,
 }
 
 impl Store {
-    fn new() -> Self {
+    pub async fn new(db_url: &str) -> Self {
+        let db_pool = match PgPoolOptions::new()
+            .max_connections(5)
+            .connect(db_url)
+            .await {
+            Ok(pool) => pool,
+            Err(e) => panic!("Can't connect to database: {}", e),
+        };
         Store {
-            questions: Arc::new(RwLock::new(HashMap::new())),
-            answers: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    pub fn init() -> Self {
-        let file = include_str!("../../questions.json");
-        let parsed_hash_map: HashMap<QuestionId, Question> =
-            serde_json::from_str(file).expect("Can't parse questions.json file");
-
-        Store {
-            questions: Arc::new(RwLock::new(parsed_hash_map)),
-            answers: Arc::new(RwLock::new(HashMap::new())),
+            connection: db_pool,
         }
     }
 }

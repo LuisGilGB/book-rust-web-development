@@ -30,7 +30,8 @@ async fn main() {
         )
     });
 
-    let store = Store::init();
+    let store = Store::new("postgres://localhost:5432/rustwebdev")
+        .await;
     let store_filter = warp::any().map(move || store.clone());
 
     let id_filter = warp::any().map(|| uuid::Uuid::new_v4().to_string());
