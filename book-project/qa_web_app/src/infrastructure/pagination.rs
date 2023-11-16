@@ -3,15 +3,15 @@ use std::collections::HashMap;
 use errors::Error;
 
 /// Pagination struct extracted from the query parameters
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Pagination {
     /// The index where the page starts
-    pub start: usize,
-    /// The index where the page ends
-    pub end: usize,
+    pub offset: Option<u32>,
+    /// The size of the page
+    pub limit: Option<u32>,
 }
 
-fn cap_number(max: usize) -> impl Fn(usize) -> usize {
+fn cap_number(max: u32) -> impl Fn(u32) -> u32 {
     move |x| {
         if x > max {
             max
@@ -29,33 +29,32 @@ fn cap_number(max: usize) -> impl Fn(usize) -> usize {
 /// use qa_web_app::infrastructure::pagination::{extract_pagination, Pagination};
 ///
 /// let mut params = HashMap::new();
-/// params.insert("start".to_string(), "0".to_string());
-/// params.insert("end".to_string(), "10".to_string());
+/// params.insert("offset".to_string(), "0".to_string());
+/// params.insert("limit".to_string(), "10".to_string());
 /// let pagination = extract_pagination(params, 100).unwrap();
-/// assert_eq!(pagination.start, 0);
-/// assert_eq!(pagination.end, 10);
+/// assert_eq!(pagination.offset, Some(0));
+/// assert_eq!(pagination.limit, Some(10));
 /// ```
 pub fn extract_pagination(
-    params: HashMap<String, String>,
-    total_length: usize,
+    params: HashMap<String, String>
 ) -> Result<Pagination, Error> {
-    if params.contains_key("start") && params.contains_key("end") {
-        let start = params
-            .get("start")
+    if params.contains_key("offset") && params.contains_key("limit") {
+        let offset = params
+            .get("offset")
             .unwrap()
-            .parse::<usize>()
+            .parse::<u32>()
             .map_err(Error::ParseError)?;
-        let end = params
-            .get("end")
+        let limit = params
+            .get("limit")
             .unwrap()
-            .parse::<usize>()
+            .parse::<u32>()
             .map_err(Error::ParseError)?;
-        if start > end {
+        if offset > limit {
             return Err(Error::StartGreaterThanEnd);
         }
         return Ok(Pagination {
-            start: cap_number(total_length)(start),
-            end: cap_number(total_length)(end),
+            offset: Some(offset),
+            limit: Some(limit),
         });
     }
     Err(Error::MissingParameters)

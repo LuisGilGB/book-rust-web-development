@@ -1,10 +1,10 @@
 use std::fmt;
 
+use warp::{Rejection, Reply};
 use warp::body::BodyDeserializeError;
 use warp::cors::CorsForbidden;
 use warp::http::StatusCode;
 use warp::reject::Reject;
-use warp::{Rejection, Reply};
 
 #[derive(Debug)]
 pub struct InvalidId;
@@ -19,6 +19,7 @@ pub enum Error {
     StartGreaterThanEnd,
     QuestionNotFound,
     QuestionAlreadyExists,
+    DatabaseQueryError,
 }
 
 impl fmt::Display for InvalidId {
@@ -42,6 +43,7 @@ impl fmt::Display for Error {
             Error::StartGreaterThanEnd => write!(formatter, "Start cannot be greater than end"),
             Error::QuestionNotFound => write!(formatter, "Question not found"),
             Error::QuestionAlreadyExists => write!(formatter, "Question already exists"),
+            Error::DatabaseQueryError => write!(formatter, "Query could not be executed"),
         }
     }
 }
@@ -81,6 +83,10 @@ pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
         Some(Error::QuestionAlreadyExists) => Ok(warp::reply::with_status(
             "Question already exists".to_string(),
             StatusCode::CONFLICT,
+        )),
+        Some(Error::DatabaseQueryError) => Ok(warp::reply::with_status(
+            "Query could not be executed".to_string(),
+            StatusCode::INTERNAL_SERVER_ERROR,
         )),
         err => {
             println!("Unhandled rejection: {:?}", r);

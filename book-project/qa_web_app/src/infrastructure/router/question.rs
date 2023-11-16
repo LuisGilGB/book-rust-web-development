@@ -6,7 +6,7 @@ use warp::http::StatusCode;
 use errors::{Error, InvalidId};
 
 use crate::domain::question::{Question, QuestionId};
-use crate::infrastructure::pagination::extract_pagination;
+use crate::infrastructure::pagination::{extract_pagination, Pagination};
 use crate::infrastructure::store::Store;
 
 pub async fn get_questions(
@@ -15,23 +15,19 @@ pub async fn get_questions(
     id: String,
 ) -> Result<impl Reply, Rejection> {
     log::info!("{} - Querying questions...", &id);
+    let mut pagination = Pagination::default();
     if !params.is_empty() {
-        let pagination = extract_pagination(params, store.questions.read().await.len())?;
-        log::info!("{} - Pagination set: {:?}", &id, &pagination);
-        let raw_response: Vec<Question> = store.questions.read().await.values().cloned().collect();
-        let response = raw_response[pagination.start..pagination.end].to_vec();
-        Ok(warp::reply::json(&response))
-    } else {
-        log::info!("{} - No pagination used", &id);
-        let response = store
-            .questions
-            .read()
-            .await
-            .values()
-            .cloned()
-            .collect::<Vec<Question>>();
-        Ok(warp::reply::json(&response))
+        log::debug!("{} - Pagination used", &id);
+        pagination = extract_pagination(params)?;
     }
+    let response = match store.get_questions(pagination.limit, pagination.offset).await {
+        Ok(questions) => questions,
+        Err(e) => {
+            log::error!("{} - Error getting questions: {}", &id, e);
+            return Err(warp::reject::custom(e));
+        }
+    };
+    Ok(warp::reply::json(&response))
 }
 
 pub async fn add_question(
