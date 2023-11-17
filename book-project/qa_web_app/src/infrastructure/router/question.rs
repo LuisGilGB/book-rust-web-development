@@ -5,7 +5,7 @@ use warp::http::StatusCode;
 
 use errors::{Error, InvalidId};
 
-use crate::domain::question::{Question, QuestionId};
+use crate::domain::question::{Question, QuestionDraft, QuestionId};
 use crate::infrastructure::pagination::{extract_pagination, Pagination};
 use crate::infrastructure::store::Store;
 
@@ -32,19 +32,14 @@ pub async fn get_questions(
 
 pub async fn add_question(
     store: Store,
-    question: Question,
+    question_draft: QuestionDraft,
     id: String,
 ) -> Result<impl Reply, Rejection> {
     log::info!("{} - Adding question...", &id);
-    if store.questions.read().await.contains_key(&question.id) {
-        log::warn!("{} - Question already exists", &id);
-        return Err(warp::reject::custom(Error::QuestionAlreadyExists));
-    }
-    store
-        .questions
-        .write()
-        .await
-        .insert(question.id.clone(), question.clone());
+    store.add_question(question_draft).await.map_err(|e| {
+        log::error!("{} - Error adding question: {}", &id, e);
+        warp::reject::custom(e)
+    })?;
     Ok(warp::reply::with_status(
         "Question added",
         StatusCode::CREATED,

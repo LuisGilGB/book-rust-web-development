@@ -3,7 +3,7 @@ use sqlx::postgres::{PgPoolOptions, PgRow};
 
 use errors::Error;
 
-use crate::domain::question::{Question, QuestionId};
+use crate::domain::question::{Question, QuestionDraft, QuestionId};
 
 #[derive(Clone, Debug)]
 pub struct Store {
@@ -43,6 +43,28 @@ impl Store {
             Ok(questions) => Ok(questions),
             Err(e) => {
                 log::error!("Error getting questions: {}", e);
+                Err(Error::DatabaseQueryError)
+            }
+        }
+    }
+
+    pub async fn add_question(
+        &self,
+        question: QuestionDraft,
+    ) -> Result<Question, Error> {
+        match sqlx::query("INSERT INTO questions (title, content, tags) VALUES ($1 $2 $3) RETURNING id, title, content, tags")
+            .bind(question.title)
+            .bind(question.content)
+            .bind(question.tags)
+            .map(|row| Question {
+                id: QuestionId(row.get("id")),
+                title: row.get("title"),
+                content: row.get("content"),
+                tags: row.get("tags"),
+            }) {
+            Ok(question) => Ok(question),
+            Err(e) => {
+                log::error!("Error adding question: {}", e);
                 Err(Error::DatabaseQueryError)
             }
         }

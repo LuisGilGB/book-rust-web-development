@@ -14,6 +14,12 @@ pub struct Question {
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
 pub struct QuestionId(pub i32);
 
+pub struct QuestionDraft {
+    pub title: String,
+    pub content: String,
+    pub tags: Option<Vec<String>>,
+}
+
 impl Question {
     fn new(id: QuestionId, title: String, content: String, tags: Option<Vec<String>>) -> Self {
         Question {
