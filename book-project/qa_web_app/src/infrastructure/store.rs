@@ -3,6 +3,7 @@ use sqlx::postgres::{PgPoolOptions, PgRow};
 
 use errors::Error;
 
+use crate::domain::answer::{Answer, AnswerDraft, AnswerId};
 use crate::domain::question::{Question, QuestionDraft, QuestionId};
 
 #[derive(Clone, Debug)]
@@ -30,8 +31,8 @@ impl Store {
         offset: Option<u32>,
     ) -> Result<Vec<Question>, Error> {
         match sqlx::query("SELECT * FROM questions LIMIT $1 OFFSET $2")
-            .bind(limit)
-            .bind(offset.unwrap_or(0))
+            .bind(limit.unwrap_or(10) as i32)
+            .bind(offset.unwrap_or(0) as i32)
             .map(|row: PgRow| Question {
                 id: QuestionId(row.get("id")),
                 title: row.get("title"),
@@ -52,7 +53,7 @@ impl Store {
         &self,
         question: QuestionDraft,
     ) -> Result<Question, Error> {
-        match sqlx::query("INSERT INTO questions (title, content, tags) VALUES ($1 $2 $3) RETURNING id, title, content, tags")
+        match sqlx::query("INSERT INTO questions (title, content, tags) VALUES ($1, $2, $3) RETURNING id, title, content, tags")
             .bind(question.title)
             .bind(question.content)
             .bind(question.tags)
@@ -61,7 +62,9 @@ impl Store {
                 title: row.get("title"),
                 content: row.get("content"),
                 tags: row.get("tags"),
-            }) {
+            })
+            .fetch_one(&self.connection)
+            .await {
             Ok(question) => Ok(question),
             Err(e) => {
                 log::error!("Error adding question: {}", e);
@@ -97,7 +100,7 @@ impl Store {
 
     pub async fn delete_question(&self, id: QuestionId) -> Result<bool, Error> {
         let result = sqlx::query("DELETE FROM questions WHERE id = ?")
-            .bind(id)
+            .bind(id.0)
             .execute(&self.connection)
             .await;
 
@@ -114,5 +117,24 @@ impl Store {
         }
 
         Ok(true)
+    }
+
+    pub async fn add_answer(&self, answer: AnswerDraft) -> Result<Answer, Error> {
+        match sqlx::query("INSERT INTO answers (content, question_id) VALUES ($1, $2) RETURNING id, content, question_id")
+            .bind(answer.content)
+            .bind(answer.question_id.0)
+            .map(|row: PgRow| Answer {
+                id: AnswerId(row.get("id")),
+                content: row.get("content"),
+                question_id: QuestionId(row.get("question_id")),
+            })
+            .fetch_one(&self.connection)
+            .await {
+            Ok(answer) => Ok(answer),
+            Err(e) => {
+                log::error!("Error adding answer: {}", e);
+                Err(Error::DatabaseQueryError)
+            }
+        }
     }
 }

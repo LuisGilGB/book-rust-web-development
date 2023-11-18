@@ -11,16 +11,6 @@ pub struct Pagination {
     pub limit: Option<u32>,
 }
 
-fn cap_number(max: u32) -> impl Fn(u32) -> u32 {
-    move |x| {
-        if x > max {
-            max
-        } else {
-            x
-        }
-    }
-}
-
 /// Extracts the pagination parameters from the query parameters
 ///
 /// # Example usage

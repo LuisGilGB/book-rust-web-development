@@ -1,5 +1,4 @@
 use std::fmt;
-use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +13,7 @@ pub struct Question {
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Hash)]
 pub struct QuestionId(pub i32);
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct QuestionDraft {
     pub title: String,
     pub content: String,
