@@ -28,7 +28,7 @@ impl Store {
         &self,
         limit: Option<u32>,
         offset: Option<u32>,
-    ) -> Result<Vec<Question>, Error::DatabaseQueryError> {
+    ) -> Result<Vec<Question>, Error> {
         match sqlx::query("SELECT * FROM questions LIMIT $1 OFFSET $2")
             .bind(limit)
             .bind(offset.unwrap_or(0))
@@ -93,5 +93,26 @@ impl Store {
                 Err(Error::DatabaseQueryError)
             }
         }
+    }
+
+    pub async fn delete_question(&self, id: QuestionId) -> Result<bool, Error> {
+        let result = sqlx::query("DELETE FROM questions WHERE id = ?")
+            .bind(id)
+            .execute(&self.connection)
+            .await;
+
+        let rows_affected = match result {
+            Ok(r) => r.rows_affected(),
+            Err(e) => {
+                log::error!("Error deleting question: {}", e);
+                return Err(Error::DatabaseQueryError);
+            }
+        };
+
+        if rows_affected == 0 {
+            return Err(Error::QuestionNotFound);
+        }
+
+        Ok(true)
     }
 }
