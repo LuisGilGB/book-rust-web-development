@@ -58,21 +58,15 @@ pub async fn update_question(
         return Err(warp::reject::custom(Error::InvalidId(InvalidId)));
     }
     match store
-        .questions
-        .write()
-        .await
-        .get_mut(&QuestionId(question_id))
-    {
-        Some(q) => {
-            *q = question;
-            Ok(warp::reply::with_status(
-                "Question updated",
-                StatusCode::ACCEPTED,
-            ))
-        }
-        None => {
-            log::warn!("{} - Question not found", &id);
-            Err(warp::reject::custom(Error::QuestionNotFound))
+        .update_question(question)
+        .await {
+        Ok(_) => Ok(warp::reply::with_status(
+            "Question updated",
+            StatusCode::ACCEPTED,
+        )),
+        Err(e) => {
+            log::error!("{} - Error updating question: {}", &id, e);
+            Err(warp::reject::custom(e))
         }
     }
 }
