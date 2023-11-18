@@ -40,3 +40,29 @@ async fn main() -> Result<(), sqlx::Error> {
     // ...
 }
 ```
+
+## Running a query
+
+SQLx allows you to send queries lazily and with bound parameters:
+
+```rust
+#[tokio::main]
+async fn main() -> Result<(), sqlx::Error> {
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect("postgres://postgres:password@localhost:5432/postgres")
+        .await?;
+
+    let rows = sqlx::query("SELECT * FROM users WHERE id = $1 RETURNING id, name")
+        .bind(1)
+        .map(|row: PgRow| {
+            let id: i32 = row.get("id");
+            let name: String = row.get("name");
+            println!("id: {}, name: {}", id, name);
+        })
+        .fetch_all(&pool)
+        .await?;
+
+    //...
+}
+```
