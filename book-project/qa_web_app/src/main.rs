@@ -1,5 +1,8 @@
 #![warn(clippy::all)]
 
+use std::path::Path;
+
+use sqlx::migrate::Migrator;
 use warp::{Filter, http::Method};
 
 use errors::return_error;
@@ -32,6 +35,12 @@ async fn main() {
 
     let store = Store::new("postgres://localhost:5432/rustwebdev")
         .await;
+
+    let mut migrator = Migrator::new(Path::new("../migrations"))
+        .await.unwrap();
+
+    migrator.run(&store.clone().connection).await.unwrap();
+
     let store_filter = warp::any().map(move || store.clone());
 
     let id_filter = warp::any().map(|| uuid::Uuid::new_v4().to_string());
