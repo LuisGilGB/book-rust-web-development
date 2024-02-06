@@ -35,6 +35,19 @@ pub async fn add_question(
     question_draft: QuestionDraft,
     id: String,
 ) -> Result<impl Reply, Rejection> {
+    log::info!("{} - Checking bad worths...", &id);
+    let client = reqwest::Client::new();
+    let response = client
+        .post("https://api.apilayer.com/bad_words?censor_character=*")
+        .header("apikey", "sjPxmHoxo8lD2DkKFSGDjCPWd9nMykXE")
+        .body(&question_draft.content)
+        .send()
+        .await?
+        .text()
+        .await?;
+    
+    println!("Response: {}", response);
+
     log::info!("{} - Adding question...", &id);
     store.add_question(question_draft).await.map_err(|e| {
         log::error!("{} - Error adding question: {}", &id, e);
