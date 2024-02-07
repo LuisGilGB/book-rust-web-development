@@ -1,5 +1,6 @@
 use std::fmt;
 
+use reqwest::Error as ReqwestError;
 use warp::{Rejection, Reply};
 use warp::body::BodyDeserializeError;
 use warp::cors::CorsForbidden;
@@ -20,6 +21,7 @@ pub enum Error {
     QuestionNotFound,
     QuestionAlreadyExists,
     DatabaseQueryError,
+    ExternalAPIError(ReqwestError),
 }
 
 impl fmt::Display for InvalidId {
@@ -44,6 +46,7 @@ impl fmt::Display for Error {
             Error::QuestionNotFound => write!(formatter, "Question not found"),
             Error::QuestionAlreadyExists => write!(formatter, "Question already exists"),
             Error::DatabaseQueryError => write!(formatter, "Query could not be executed"),
+            Error::ExternalAPIError(error) => write!(formatter, "External API error: {}", error),
         }
     }
 }
@@ -87,6 +90,10 @@ pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
         Some(Error::DatabaseQueryError) => Ok(warp::reply::with_status(
             "Query could not be executed".to_string(),
             StatusCode::INTERNAL_SERVER_ERROR,
+        )),
+        Some(Error::ExternalAPIError(_error)) => Ok(warp::reply::with_status(
+            "External API error".to_string(),
+            StatusCode::BAD_GATEWAY,
         )),
         err => {
             println!("Unhandled rejection: {:?}", r);

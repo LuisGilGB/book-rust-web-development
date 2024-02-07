@@ -40,23 +40,38 @@ pub async fn add_question(
     let response = client
         .post("https://api.apilayer.com/bad_words?censor_character=*")
         .header("apikey", "sjPxmHoxo8lD2DkKFSGDjCPWd9nMykXE")
-        .body(&question_draft.content)
+        .body(String::from(&question_draft.content))
         .send()
-        .await?
-        .text()
-        .await?;
-    
-    println!("Response: {}", response);
+        .await
+        .map_err(|e| {
+            log::error!("{} - Error checking bad words: {}", &id, e);
+            Error::ExternalAPIError(e)
+        })?;
 
-    log::info!("{} - Adding question...", &id);
-    store.add_question(question_draft).await.map_err(|e| {
-        log::error!("{} - Error adding question: {}", &id, e);
-        warp::reject::custom(e)
-    })?;
-    Ok(warp::reply::with_status(
-        "Question added",
-        StatusCode::CREATED,
-    ))
+    match response.error_for_status() {
+        Ok(response) => {
+            log::info!("{} - Bad words checked", &id);
+            let response = response.text().await.map_err(|e| {
+                log::error!("{} - Error checking bad words: {}", &id, e);
+                Error::ExternalAPIError(e)
+            })?;
+            println!("Response: {}", response);
+
+            log::info!("{} - Adding question...", &id);
+            store.add_question(question_draft).await.map_err(|e| {
+                log::error!("{} - Error adding question: {}", &id, e);
+                warp::reject::custom(e)
+            })?;
+            Ok(warp::reply::with_status(
+                "Question added",
+                StatusCode::CREATED,
+            ))
+        }
+        Err(e) => {
+            log::error!("{} - Error checking bad words: {}", &id, e);
+            return Err(warp::reject::custom(Error::ExternalAPIError(e)));
+        }
+    }
 }
 
 pub async fn update_question(
