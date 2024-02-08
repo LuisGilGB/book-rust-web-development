@@ -7,6 +7,7 @@ use errors::{Error, InvalidId};
 
 use crate::domain::question::{Question, QuestionDraft, QuestionId};
 use crate::infrastructure::pagination::{extract_pagination, Pagination};
+use crate::infrastructure::response::{BadWordsResponse, create_api_layer_error};
 use crate::infrastructure::store::Store;
 
 pub async fn get_questions(
@@ -48,28 +49,43 @@ pub async fn add_question(
             Error::ExternalAPIError(e)
         })?;
 
-    match response.error_for_status() {
-        Ok(response) => {
-            log::info!("{} - Bad words checked", &id);
-            let response = response.text().await.map_err(|e| {
-                log::error!("{} - Error checking bad words: {}", &id, e);
-                Error::ExternalAPIError(e)
-            })?;
-            println!("Response: {}", response);
+    if !response.status().is_success() {
+        if response.status().is_client_error() {
+            log::warn!("{} - Bad request", &id);
+            let err = create_api_layer_error(response).await;
+            return Err(warp::reject::custom(Error::ClientError(err)));
+        } else {
+            log::error!("{} - Server error", &id);
+            let err = create_api_layer_error(response).await;
+            return Err(warp::reject::custom(Error::ServerError(err)));
+        }
+    }
 
+    let response = response.json::<BadWordsResponse>()
+        .await
+        .map_err(|e| {
+            log::error!("{} - Error checking bad words: {}", &id, e);
+            Error::ExternalAPIError(e)
+        })?;
+
+    let content = response.censored_content;
+
+    let question = QuestionDraft {
+        content,
+        ..question_draft
+    };
+
+    match store.add_question(question).await {
+        Ok(question) => {
             log::info!("{} - Adding question...", &id);
-            store.add_question(question_draft).await.map_err(|e| {
-                log::error!("{} - Error adding question: {}", &id, e);
-                warp::reject::custom(e)
-            })?;
             Ok(warp::reply::with_status(
-                "Question added",
+                warp::reply::json(&question),
                 StatusCode::CREATED,
             ))
         }
         Err(e) => {
-            log::error!("{} - Error checking bad words: {}", &id, e);
-            return Err(warp::reject::custom(Error::ExternalAPIError(e)));
+            log::error!("{} - Error adding question: {}", &id, e);
+            Err(warp::reject::custom(e))
         }
     }
 }

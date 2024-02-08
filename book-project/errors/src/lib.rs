@@ -1,4 +1,5 @@
 use std::fmt;
+use std::fmt::{Display, Formatter};
 
 use reqwest::Error as ReqwestError;
 use warp::{Rejection, Reply};
@@ -22,6 +23,20 @@ pub enum Error {
     QuestionAlreadyExists,
     DatabaseQueryError,
     ExternalAPIError(ReqwestError),
+    ClientError(APILayerError),
+    ServerError(APILayerError),
+}
+
+#[derive(Debug, Clone)]
+pub struct APILayerError {
+    pub status: u16,
+    pub message: String,
+}
+
+impl Display for APILayerError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Status: {}, Message: {}", self.status, self.message)
+    }
 }
 
 impl fmt::Display for InvalidId {
@@ -47,11 +62,15 @@ impl fmt::Display for Error {
             Error::QuestionAlreadyExists => write!(formatter, "Question already exists"),
             Error::DatabaseQueryError => write!(formatter, "Query could not be executed"),
             Error::ExternalAPIError(error) => write!(formatter, "External API error: {}", error),
+            Error::ClientError(error) => write!(formatter, "External Client error: {}", error),
+            Error::ServerError(error) => write!(formatter, "External Server error: {}", error),
         }
     }
 }
 
 impl Reject for Error {}
+
+impl Reject for APILayerError {}
 
 pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
     match r.find::<Error>() {
@@ -93,6 +112,14 @@ pub async fn return_error(r: Rejection) -> Result<impl Reply, Rejection> {
         )),
         Some(Error::ExternalAPIError(_error)) => Ok(warp::reply::with_status(
             "External API error".to_string(),
+            StatusCode::BAD_GATEWAY,
+        )),
+        Some(Error::ClientError(_error)) => Ok(warp::reply::with_status(
+            "External Client error".to_string(),
+            StatusCode::BAD_GATEWAY,
+        )),
+        Some(Error::ServerError(_error)) => Ok(warp::reply::with_status(
+            "External Server error".to_string(),
             StatusCode::BAD_GATEWAY,
         )),
         err => {
